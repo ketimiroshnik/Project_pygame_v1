@@ -1,11 +1,10 @@
 import pygame, os, sys
-import pprint
 
 WINDOW_SIZE = WINDOW_WIDTH, WINDOW_HEIGHT = 700, 700
 FPS = 15
 MAP_DIR = 'levels'
 IMAGE_DIR = 'images'
-COUNT_LEVELS = 1
+COUNT_LEVELS = 4
 TILE_SIZE = 55
 
 pygame.init()
@@ -35,7 +34,10 @@ IMAGES = {'hero': pygame.transform.scale(load_image(f'{IMAGE_DIR}/hero.png'), (T
           'grass': pygame.transform.scale(load_image(f'{IMAGE_DIR}/grass.jpg'), (TILE_SIZE, TILE_SIZE)),
           'target': pygame.transform.scale(load_image(f'{IMAGE_DIR}/target.jpg'), (TILE_SIZE, TILE_SIZE)),
           'box': pygame.transform.scale(load_image(f'{IMAGE_DIR}/box.jpg'), (TILE_SIZE, TILE_SIZE)),
-          'free': pygame.transform.scale(load_image(f'{IMAGE_DIR}/free.jpg'), (TILE_SIZE, TILE_SIZE))}
+          'free': pygame.transform.scale(load_image(f'{IMAGE_DIR}/free.jpg'), (TILE_SIZE, TILE_SIZE)),
+          'next': load_image(f'{IMAGE_DIR}/next.png'),
+          'back': load_image(f'{IMAGE_DIR}/back.png'),
+          'again': load_image(f'{IMAGE_DIR}/again.png')}
 
 
 class Level:
@@ -140,9 +142,62 @@ class Game:
         return set(self.level.targets) == set(self.level.get_boxs_pos())
 
 
+class Buttons:
+    def __init__(self):
+        self.pos = None
+        self.size = None
+
+    def get_click(self, pos):
+        if self.pos is None or self.size is None:
+            return
+        if self.pos[0] <= pos[0] <= (self.pos[0] + self.size[0]) \
+                and self.pos[0] <= pos[0] <= (self.pos[0] + self.size[0]):
+            return self.on_click()
+        else:
+            return None
+
+    def render(self, screen):
+        if self.pos is None or self.size is None:
+            return
+        screen.blit(self.image, self.pos)
+
+
+class Again(Buttons):
+    def __init__(self):
+        super().__init__()
+        self.size = (45, 45)
+        self.pos = (640, 640)
+        self.image = pygame.transform.scale(IMAGES['again'], self.size)
+
+    def on_click(self):
+        return 0
+
+
+class Next(Buttons):
+    def __init__(self):
+        super().__init__()
+        self.size = (45, 45)
+        self.pos = (580, 640)
+        self.image = pygame.transform.scale(IMAGES['next'], self.size)
+
+    def on_click(self):
+        return 1
+
+
+class Back(Buttons):
+    def __init__(self):
+        super().__init__()
+        self.size = (45, 45)
+        self.pos = (520, 640)
+        self.image = pygame.transform.scale(IMAGES['back'], self.size)
+
+    def on_click(self):
+        return -1
+
+
 def show_message(screen, message):
-    font = pygame.font.Font(None, 50)
-    text = font.render(message, True, (50, 70, 0))
+    font = pygame.font.Font(None, 20)
+    text = font.render(message, True, (255, 0, 0))
     text_x = WINDOW_WIDTH // 2 - text.get_width() // 2
     text_y = WINDOW_HEIGHT // 2 - text.get_height() // 2
     text_w = text.get_width()
@@ -160,6 +215,10 @@ def main():
     hero = Hero(level.get_hero_start_position())
     game = Game(level, hero)
     game_over = False
+    new_game = False
+    now_level = 1
+
+    buttons = {'again': Again(), 'next': Next(), 'back': Back()}
 
     clock = pygame.time.Clock()
     running = True
@@ -178,10 +237,25 @@ def main():
                 elif event.key == pygame.K_LEFT:
                     next_x, next_y = -1, 0
                 game.update_hero((next_x, next_y))
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                for e in buttons:
+                    res = buttons[e].get_click(event.pos)
+                    if res is not None:
+                        now_level += res
+                        now_level = min(max(1, now_level), COUNT_LEVELS)
+                        new_game = True
+        if new_game:
+            level = Level(f'{now_level}.txt')
+            hero = Hero(level.get_hero_start_position())
+            game = Game(level, hero)
+            game_over = False
+            new_game = False
         screen.fill(('#f5f5dc'))
         game.render(screen)
+        for e in buttons:
+            buttons[e].render(screen)
         if game.check_win():
-            show_message(screen, "You won!")
+            show_message(screen, "Вы победили! Перейдите на следующий уровень")
             game_over = True
         pygame.display.flip()
         clock.tick(FPS)
