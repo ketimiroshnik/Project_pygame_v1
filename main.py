@@ -206,6 +206,18 @@ def show_message(screen, message):
     screen.blit(text, (text_x, text_y))
 
 
+def show_level(screen, n_level):
+    font = pygame.font.Font(None, 30)
+    text = font.render(f'Level {n_level} of {COUNT_LEVELS}', True, (255, 0, 0))
+    screen.blit(text, (20, 620))
+
+
+def show_step(screen, n_step):
+    font = pygame.font.Font(None, 30)
+    text = font.render(f'Steps {n_step}', True, (255, 0, 0))
+    screen.blit(text, (20, 650))
+
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode(WINDOW_SIZE)
@@ -217,6 +229,7 @@ def main():
     game_over = False
     new_game = False
     now_level = 1
+    n_steps = 0
 
     buttons = {'again': Again(), 'next': Next(), 'back': Back()}
 
@@ -230,12 +243,16 @@ def main():
                 next_x, next_y = 0, 0
                 if event.key == pygame.K_UP:
                     next_x, next_y = 0, -1
+                    n_steps += 1
                 elif event.key == pygame.K_DOWN:
                     next_x, next_y = 0, 1
+                    n_steps += 1
                 elif event.key == pygame.K_RIGHT:
                     next_x, next_y = 1, 0
+                    n_steps += 1
                 elif event.key == pygame.K_LEFT:
                     next_x, next_y = -1, 0
+                    n_steps += 1
                 game.update_hero((next_x, next_y))
             if event.type == pygame.MOUSEBUTTONDOWN:
                 for e in buttons:
@@ -244,18 +261,24 @@ def main():
                         now_level += res
                         now_level = min(max(1, now_level), COUNT_LEVELS)
                         new_game = True
+            if event.type == pygame.KEYDOWN and game_over:
+                now_level = min(max(1, now_level + 1), COUNT_LEVELS)
+                new_game = True
         if new_game:
             level = Level(f'{now_level}.txt')
             hero = Hero(level.get_hero_start_position())
             game = Game(level, hero)
             game_over = False
             new_game = False
+            n_steps = 0
         screen.fill(('#f5f5dc'))
         game.render(screen)
+        show_step(screen, n_steps)
+        show_level(screen, now_level)
         for e in buttons:
             buttons[e].render(screen)
         if game.check_win():
-            show_message(screen, "Вы победили! Перейдите на следующий уровень")
+            show_message(screen, "Вы победили! Для перехода на следующий уровень нажите любую клавишу")
             game_over = True
         pygame.display.flip()
         clock.tick(FPS)
