@@ -1,4 +1,7 @@
-import pygame, os, sys
+import pygame
+import pygame_gui
+import os
+import sys
 
 WINDOW_SIZE = WINDOW_WIDTH, WINDOW_HEIGHT = 700, 700
 FPS = 15
@@ -200,9 +203,6 @@ def show_message(screen, message):
     text = font.render(message, True, (255, 0, 0))
     text_x = WINDOW_WIDTH // 2 - text.get_width() // 2
     text_y = WINDOW_HEIGHT // 2 - text.get_height() // 2
-    text_w = text.get_width()
-    text_h = text.get_height()
-    # pygame.draw.rect(screen, (200, 150, 50), (text_x - 10, text_y - 10, text_w + 20, text_h + 20))
     screen.blit(text, (text_x, text_y))
 
 
@@ -221,6 +221,7 @@ def show_step(screen, n_step):
 def main():
     pygame.init()
     screen = pygame.display.set_mode(WINDOW_SIZE)
+    manager = pygame_gui.UIManager(WINDOW_SIZE)
     screen.fill(('#f5f5dc'))
 
     level = Level('1.txt')
@@ -238,7 +239,14 @@ def main():
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
+                confirmation_dialog = pygame_gui.windows.UIConfirmationDialog(
+                    rect=pygame.Rect((250, 200), (300, 200)),
+                    manager=manager,
+                    window_title='Подтверждение',
+                    action_long_desc='Вы уверены, что хотите выйти?',
+                    action_short_name='Ок',
+                    blocking=True
+                )
             if event.type == pygame.KEYDOWN and not game_over:
                 next_x, next_y = 0, 0
                 if event.key == pygame.K_UP:
@@ -264,6 +272,10 @@ def main():
             if event.type == pygame.KEYDOWN and game_over:
                 now_level = min(max(1, now_level + 1), COUNT_LEVELS)
                 new_game = True
+            if event.type == pygame.USEREVENT:
+                if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
+                    running = False
+            manager.process_events(event)
         if new_game:
             level = Level(f'{now_level}.txt')
             hero = Hero(level.get_hero_start_position())
@@ -280,6 +292,8 @@ def main():
         if game.check_win():
             show_message(screen, "Вы победили! Для перехода на следующий уровень нажите любую клавишу")
             game_over = True
+        manager.update(FPS)
+        manager.draw_ui(screen)
         pygame.display.flip()
         clock.tick(FPS)
     pygame.quit()
