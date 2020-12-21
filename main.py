@@ -1,13 +1,41 @@
-import pygame
+import pygame, os, sys
 import pprint
 
 WINDOW_SIZE = WINDOW_WIDTH, WINDOW_HEIGHT = 700, 700
 FPS = 15
 MAP_DIR = 'levels'
+IMAGE_DIR = 'images'
 COUNT_LEVELS = 1
-TILE_SIZE = 50
+TILE_SIZE = 55
+
+pygame.init()
+screen = pygame.display.set_mode(WINDOW_SIZE)
+
+
+def load_image(name, colorkey=None):
+    fullname = name
+    if not os.path.isfile(fullname):
+        print(f"Файл с изображением '{fullname}' не найден")
+        sys.exit()
+    image = pygame.image.load(fullname)
+    if colorkey is not None:
+        image = image.convert()
+        if colorkey == -1:
+            colorkey = image.get_at((0, 0))
+        image.set_colorkey(colorkey)
+    else:
+        image = image.convert_alpha()
+    return image
+
 
 SIGNS = {'grass': '-', 'wall': '#', 'hero': '@', 'box': '$', 'target': '.', 'free': ' '}
+
+IMAGES = {'hero': pygame.transform.scale(load_image(f'{IMAGE_DIR}/hero.png'), (TILE_SIZE, TILE_SIZE)),
+          'wall': pygame.transform.scale(load_image(f'{IMAGE_DIR}/wall.jpg'), (TILE_SIZE, TILE_SIZE)),
+          'grass': pygame.transform.scale(load_image(f'{IMAGE_DIR}/grass.jpg'), (TILE_SIZE, TILE_SIZE)),
+          'target': pygame.transform.scale(load_image(f'{IMAGE_DIR}/target.jpg'), (TILE_SIZE, TILE_SIZE)),
+          'box': pygame.transform.scale(load_image(f'{IMAGE_DIR}/box.jpg'), (TILE_SIZE, TILE_SIZE)),
+          'free': pygame.transform.scale(load_image(f'{IMAGE_DIR}/free.jpg'), (TILE_SIZE, TILE_SIZE))}
 
 
 class Level:
@@ -20,8 +48,8 @@ class Level:
         self.height = len(self.map)
         self.width = max((map(lambda x: len(x), self.map)))
         self.tile_size = TILE_SIZE
-        self.left = (WINDOW_WIDTH // TILE_SIZE - self.width) / 2
-        self.top = (WINDOW_HEIGHT // TILE_SIZE - self.height) / 2
+        self.left = max(0, (WINDOW_WIDTH // TILE_SIZE - self.width) // 2)
+        self.top = max(0, (WINDOW_HEIGHT // TILE_SIZE - self.height) // 2)
         self.edit_map()
 
     def edit_map(self):
@@ -41,26 +69,17 @@ class Level:
     def render(self, screen):
         for y in range(self.height):
             for x in range(self.width):
-                pygame.draw.rect(screen, pygame.color.Color('white'),
-                                 ((self.left + x) * TILE_SIZE, (self.top + y) * TILE_SIZE,
-                                  TILE_SIZE, TILE_SIZE))
+                screen.blit(IMAGES['free'], ((self.left + x) * TILE_SIZE, (self.top + y) * TILE_SIZE))
         for x, y in self.targets:
-            pygame.draw.rect(screen, pygame.color.Color('pink'),
-                             ((self.left + x) * TILE_SIZE, (self.top + y) * TILE_SIZE,
-                              TILE_SIZE, TILE_SIZE))
+            screen.blit(IMAGES['target'], ((self.left + x) * TILE_SIZE, (self.top + y) * TILE_SIZE))
         for y in range(self.height):
             for x in range(self.width):
                 if self.map[y][x] == SIGNS['wall']:
-                    pygame.draw.rect(screen, (0, 0, 0), ((self.left + x) * TILE_SIZE, (self.top + y) * TILE_SIZE,
-                                                         TILE_SIZE, TILE_SIZE))
+                    screen.blit(IMAGES['wall'], ((self.left + x) * TILE_SIZE, (self.top + y) * TILE_SIZE))
                 elif self.map[y][x] == SIGNS['grass']:
-                    pygame.draw.rect(screen, pygame.color.Color('green'),
-                                     ((self.left + x) * TILE_SIZE, (self.top + y) * TILE_SIZE,
-                                      TILE_SIZE, TILE_SIZE))
+                    screen.blit(IMAGES['grass'], ((self.left + x) * TILE_SIZE, (self.top + y) * TILE_SIZE))
                 elif self.map[y][x] == SIGNS['box']:
-                    pygame.draw.ellipse(screen, pygame.color.Color('brown'),
-                                        ((self.left + x) * TILE_SIZE, (self.top + y) * TILE_SIZE,
-                                         TILE_SIZE, TILE_SIZE))
+                    screen.blit(IMAGES['box'], ((self.left + x) * TILE_SIZE, (self.top + y) * TILE_SIZE))
 
     def how_go(self, pos):
         return self.map[pos[1]][pos[0]]
@@ -68,8 +87,6 @@ class Level:
     def move_box(self, spos, epos):
         self.map[spos[1]][spos[0]] = SIGNS['free']
         self.map[epos[1]][epos[0]] = SIGNS['box']
-        print(spos, epos)
-        pprint.pprint(self.map)
 
     def get_boxs_pos(self):
         boxes = []
@@ -93,9 +110,7 @@ class Hero:
         self.x, self.y = position
 
     def render(self, screen):
-        pygame.draw.ellipse(screen, pygame.color.Color('orange'),
-                            ((self.x + self.left) * TILE_SIZE, (self.y + self.top) * TILE_SIZE,
-                             TILE_SIZE, TILE_SIZE))
+        screen.blit(IMAGES['hero'], ((self.left + self.x) * TILE_SIZE, (self.top + self.y) * TILE_SIZE))
 
 
 class Game:
@@ -132,16 +147,14 @@ def show_message(screen, message):
     text_y = WINDOW_HEIGHT // 2 - text.get_height() // 2
     text_w = text.get_width()
     text_h = text.get_height()
-    pygame.draw.rect(screen, (200, 150, 50), (text_x - 10, text_y - 10,
-                                              text_w + 20, text_h + 20))
+    # pygame.draw.rect(screen, (200, 150, 50), (text_x - 10, text_y - 10, text_w + 20, text_h + 20))
     screen.blit(text, (text_x, text_y))
 
 
 def main():
     pygame.init()
-    pygame.display.set_caption('Sokoban')
     screen = pygame.display.set_mode(WINDOW_SIZE)
-    screen.fill((85, 85, 150))
+    screen.fill(('#f5f5dc'))
 
     level = Level('1.txt')
     hero = Hero(level.get_hero_start_position())
@@ -165,7 +178,7 @@ def main():
                 elif event.key == pygame.K_LEFT:
                     next_x, next_y = -1, 0
                 game.update_hero((next_x, next_y))
-        screen.fill((85, 85, 150))
+        screen.fill(('#f5f5dc'))
         game.render(screen)
         if game.check_win():
             show_message(screen, "You won!")
